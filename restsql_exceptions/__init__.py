@@ -14,7 +14,7 @@ ERROR_MESSAGE_MAP = {
 
 LOG_CATALOG = "/home/aiden/project/restsql/restsql_log/restsql.log"
 
-logging.basicConfig(filename=LOG_CATALOG, level=logging.ERROR)
+logging.basicConfig(filename=LOG_CATALOG, format="%(asctime)s - %(levelname)s:%(message)s", level=logging.ERROR)
 
 
 class RestsqlException(BaseException):
