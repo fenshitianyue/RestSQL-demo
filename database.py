@@ -72,6 +72,27 @@ def search_impl(table, select, agg_dict, table_limit, search_option):
     else:
         return result[:table_limit]
 
+def package_result(query_item, raw_result):
+    result = {
+        "data": raw_result,
+        "on": [],
+        "export": []
+    }
+    if query_item.get("type"):
+        result["type"] = query_item["type"]
+        for key in query_item["on"]:
+            result["on"].append(key)
+        # 这里的逻辑是: join块中的fields字段的元素数目减去on字段的key个数必须等于export字段的元素个数
+        diff = len(query_item['query']['select']['fields']) - len(query_item["on"]) - len(query_item['export'])
+        if diff > 0:
+            raise SyntaxError('The elements in the "fields" field of the "join" query contain unused columns')
+        elif diff < 0:
+            raise SyntaxError('Check your "join" syntax')
+        # 收集export字段
+        result["export"].append(query_item['export'])
+    # return {"data": raw_result}
+    return result
+
 def search(query_item):
     """return
     [{"join_type": xxx, "data": xxx, "on": xxx, "export": xxx}]
@@ -91,8 +112,7 @@ def search(query_item):
         else:
             pass  # 抛出 restsql 语法错误
     table_limit = get_table_limit(select.get("limit"))
-    result = search_impl(table, select, agg_dict, table_limit, search_option)
+    raw_result = search_impl(table, select, agg_dict, table_limit, search_option)
     # TODO: 打印此时生成的 sql
-    # TODO: 拼接查询结果
-    return result
+    return package_result(query_item, raw_result)
 
