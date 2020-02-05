@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import django.db.models
+import pandas as pd
 import model_set
 # from init_table_map import *
 from init_table_map import table_map
@@ -26,10 +27,10 @@ def process_table_name(raw_table_name):
     else:
         return raw_table_name
 
-def get_table_limit(limit):
-    if limit is None or limit > DEFAULT_LIMIT:
+def get_table_limit(raw_limit):
+    if raw_limit is None or raw_limit > DEFAULT_LIMIT:
         return DEFAULT_LIMIT
-    return limit
+    return raw_limit
 
 def build_aggregation_dict(raw_aggregation):
     agg_dict = {}
@@ -72,16 +73,15 @@ def search_impl(table, select, agg_dict, table_limit, search_option):
     else:
         return result[:table_limit]
 
-def package_result(query_item, raw_result):
+def package_result(query_item, result):
     result = {
-        "data": raw_result,
+        "data": result,
         "on": [],
         "export": []
     }
     if query_item.get("type"):
         result["type"] = query_item["type"]
-        for key in query_item["on"]:
-            result["on"].append(key)
+        result["on"] = query_item["on"].keys()
         # 这里的逻辑是: join块中的fields字段的元素数目减去on字段的key个数必须等于export字段的元素个数
         diff = len(query_item['query']['select']['fields']) - len(query_item["on"]) - len(query_item['export'])
         if diff > 0:
@@ -92,6 +92,9 @@ def package_result(query_item, raw_result):
         result["export"].append(query_item['export'])
     # return {"data": raw_result}
     return result
+
+def convert_result_to_dataframe(result):
+    return pd.DataFrame.from_records(list(result))
 
 def search(query_item):
     """return
@@ -112,7 +115,8 @@ def search(query_item):
         else:
             pass  # 抛出 restsql 语法错误
     table_limit = get_table_limit(select.get("limit"))
-    raw_result = search_impl(table, select, agg_dict, table_limit, search_option)
+    result = search_impl(table, select, agg_dict, table_limit, search_option)
+    result_dataframe = convert_result_to_dataframe(result)
     # TODO: 打印此时生成的 sql
-    return package_result(query_item, raw_result)
+    return package_result(query_item, result)
 
