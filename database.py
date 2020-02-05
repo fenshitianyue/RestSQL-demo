@@ -98,7 +98,7 @@ def convert_result_to_dataframe(result):
 
 def search(query_item):
     """return
-    [{"join_type": xxx, "data": xxx, "on": xxx, "export": xxx}]
+    [{"join_type": xxx, "data": DataFrame, "on": xxx, "export": xxx}]
     """
     select = query_item["query"]["select"]
     table = get_model(process_table_name(select["from"]))
