@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import database
-import elastic
 import pandas as pd
+from restsql_datasource import database
+from restsql_datasource import elastic
 
 data_source_map = {
     "database": database,
