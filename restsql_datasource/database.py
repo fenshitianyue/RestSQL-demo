@@ -6,8 +6,7 @@ import pandas as pd
 import model_set
 # from init_table_map import *
 from init_table_map import table_map
-
-DEFAULT_LIMIT = 1000
+import restsql_utility
 
 def get_model(model_name):
     return getattr(model_set, table_map[model_name])
@@ -26,11 +25,6 @@ def process_table_name(raw_table_name):
         return '"{}"."{}"'.format(schema, table_name)
     else:
         return raw_table_name
-
-def get_table_limit(raw_limit):
-    if raw_limit is None or raw_limit > DEFAULT_LIMIT:
-        return DEFAULT_LIMIT
-    return raw_limit
 
 def build_aggregation_dict(raw_aggregation):
     agg_dict = {}
@@ -114,7 +108,7 @@ def search(query_item):
             agg_dict = build_aggregation_dict(select["aggregation"])
         else:
             pass  # 抛出 restsql 语法错误
-    table_limit = get_table_limit(select.get("limit"))
+    table_limit = restsql_utility.get_table_limit(select.get("limit"))
     result = search_impl(table, select, agg_dict, table_limit, search_option)
     result_dataframe = convert_result_to_dataframe(result)
     # TODO: 打印此时生成的 sql
