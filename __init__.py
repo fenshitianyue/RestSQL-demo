@@ -47,6 +47,33 @@ def package_query_data(dataframe, alias_map):
 
     return data_list
 
+def join_in_memory(raw_search_result_list):
+    dataframe_main = raw_search_result_list[0]
+    # 如果第一个语法块的查询内容都为空，那么就没有必要进行后续的join
+    if len(dataframe_main) == 0:
+        return dataframe_main
+    raw_search_result_list.remove(raw_search_result_list[0])
+
+    for item in raw_search_result_list:
+        # if not item["data"].index:
+        if len(dataframe_main) == 0:
+            continue
+        alias_map = {}
+        for field in item["export"]:
+            if field.find("@") != -1:
+                alias_map.update({field.split("@")[0]: field.split("@")[1]})
+        item["data"] = item["data"].rename(columns=alias_map)
+        # TODO: 打印单表结果
+        if "left_join" == item["join_type"]:
+            dataframe_main = dataframe_main.merge(item["data"], on=item["on"], how="left")
+        elif "inner_join" == item["join_type"]:
+            dataframe_main = dataframe_main.merge(item["data"], on=item["on"])
+        elif "full_join" == item["join_type"]:
+            dataframe_main = dataframe_main.merge(item["data"], on=item["on"], how="outer")
+        else:
+            pass  # TODO: 抛出 restsql 语法错误
+    return dataframe_main
+
 def search(query):
     raw_search_result_list = []  # [{"join_type": xxx, "data": DataFrame, "on": xxx, "export": xxx}, ...]
     # 收集主语法块查询结果
@@ -63,31 +90,15 @@ def search(query):
     # 在内存中join
     dataframe_main = ""
     if query["join"]:
-        for item in raw_search_result_list:
-            if not item["data"].index:
-                continue
-            alias_map = {}
-            for field in item["export"]:
-                if field.find("@") != -1:
-                    alias_map.update({field.split("@")[0]: field.split("@")[1]})
-            item["data"] = item["data"].rename(columns=alias_map)
-            # TODO: 打印单表结果
-            if "left_join" == item["join_type"]:
-                dataframe_main = dataframe_main.merge(item["data"], on=item["on"], how="left")
-            elif "inner_join" == item["join_type"]:
-                dataframe_main = dataframe_main.merge(item["data"], on=item["on"])
-            elif "full_join" == item["join_type"]:
-                dataframe_main = dataframe_main.merge(item["data"], on=item["on"], how="outer")
-            else:
-                pass  # TODO: 抛出 restsql 语法错误
-    # if len(dataframe_main) == 0:
-    if not dataframe_main.index:
+        dataframe = join_in_memory(raw_search_result_list)
+    # if not dataframe.index:
+    if len(dataframe_main) == 0:
         return [], []
     # TODO: 打印 join 结果
-    dataframe_main = sort_result(dataframe_main, query)
-    dataframe_main = dataframe_main[0:restsql_utility.get_table_limit(query.get("limit"))]
+    dataframe = sort_result(dataframe, query)
+    dataframe = dataframe[0:restsql_utility.get_table_limit(query.get("limit"))]
 
-    dataframe_main = dataframe_main.fillna("null")
+    dataframe = dataframe.fillna("null")
 
     # 封装 grafana 预处理数据集
     alias_map = {}
@@ -96,10 +107,10 @@ def search(query):
             alias_map.update({field.split('@')[0]: field.split('@')[1]})
 
     # 根据顶级字段fields中的值对查询结果集进行过滤，去掉顶级字段fields中不存在的列
-    need_filter_columns = list(set(dataframe_main.columns).difference(set(alias_map.keys())))
-    df_main = dataframe_main.drop(need_filter_columns, axis='columns')
+    need_filter_columns = list(set(dataframe.columns).difference(set(alias_map.keys())))
+    dataframe = dataframe.drop(need_filter_columns, axis='columns')
 
-    data_list = package_query_data(df_main, alias_map)
+    data_list = package_query_data(dataframe, alias_map)
     field_list = alias_map.values()
     return data_list, field_list
 
