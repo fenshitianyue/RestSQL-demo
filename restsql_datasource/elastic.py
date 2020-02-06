@@ -4,20 +4,15 @@
 from elasticsearch import Elasticsearch
 from sngapm_web.settings import ES_CONN
 import pandas as pd
+import restsql_utility
 
-DEFAULT_LIMIT = 1000
-
-def get_table_limit(raw_limit):
-    if raw_limit is None or raw_limit > DEFAULT_LIMIT:
-        return DEFAULT_LIMIT
-    return raw_limit
 
 def parse_restsql_to_dsl(select_syntax_item):
     if select_syntax_item["from"] is None or select_syntax_item["from"] == "":
         pass  # 抛出 restsql 语法错误
 
     dsl = {
-        'size': get_table_limit(select_syntax_item.get("limit")),
+        'size': restsql_utility.get_table_limit(select_syntax_item.get("limit")),
         'query': {
             'bool': {
                 'must': []
